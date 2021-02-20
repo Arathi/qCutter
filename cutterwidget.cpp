@@ -13,6 +13,9 @@ CutterWidget::CutterWidget(QWidget *parent)
     // 禁止调节窗口大小
     setFixedSize(this->width(), this->height());
 
+    ui->lineEditStartTime->setInputMask("99:99:99.000");
+    ui->lineEditEndTime->setInputMask("99:99:99.000");
+
     // TODO 读取配置文件获取FFmpeg
     loadSettings();
 
@@ -28,7 +31,7 @@ CutterWidget::~CutterWidget()
 
 void CutterWidget::on_pushButtonSelectFFmpeg_clicked()
 {
-    QString filter = "可执行文件(*.exe);;所有文件(*.*)";
+    QString filter = "可执行文件(ffmpeg.exe);;所有文件(*.*)";
     QString ffmpegPath = QFileDialog::getOpenFileName(
                 this,
                 "请选择ffmpeg可执行文件",
@@ -42,6 +45,8 @@ void CutterWidget::on_pushButtonSelectFFmpeg_clicked()
         QMessageBox::information(this, "提示", "FFmpeg版本为" + version);
         settings->setValue("ffmpeg-path", ffmpegPath);
         ui->lineEditFFmpegPath->setText(ffmpegPath);
+        ffmpegDir = new QDir(ffmpegPath);
+        ffmpegDir->cdUp();
     }
     else
     {
@@ -51,26 +56,50 @@ void CutterWidget::on_pushButtonSelectFFmpeg_clicked()
 
 void CutterWidget::on_pushButtonOpenInputFile_clicked()
 {
+    QString dir = settings->value("last-input-dir", "").toString();
+
     QString filter = "MP4文件(*.mp4);;Matroska文件(*.mkv);;所有文件(*.*)";
     QString inputFilePath = QFileDialog::getOpenFileName(
                 this,
                 "请选择输入视频文件",
-                QString(),
+                dir,
                 filter
     );
     ui->lineEditInputFilePath->setText(inputFilePath);
+
+    // TODO 调用ffprobe获取视频信息
+
+    // 保存输入目录
+    QDir lastInputFileDir(inputFilePath);
+    lastInputFileDir.cdUp();
+    settings->setValue("last-input-dir", lastInputFileDir.path());
 }
 
 void CutterWidget::on_pushButtonOpenOutputFile_clicked()
 {
-    QString filter = "gif文件(*.gif);;MP4文件(*.mp4);;所有文件(*.*)";
+    ui->lineEditOutputFilePath->setText(getOutputFilePath());
+}
+
+QString CutterWidget::getOutputFilePath() {
+    QString dir = settings->value("last-output-dir", "").toString();
+
+    QString filter = "gif文件(*.gif);;webm文件(*.webm);;apng文件(*.apng);;MP4文件(*.mp4);;所有文件(*.*)";
     QString outputFilePath = QFileDialog::getSaveFileName(
                 this,
                 "请选择输出文件",
-                QString(),
+                dir,
                 filter
     );
-    ui->lineEditOutputFilePath->setText(outputFilePath);
+
+    // 保存输出目录
+    if (!outputFilePath.isEmpty())
+    {
+        QDir lastOutputFileDir(outputFilePath);
+        lastOutputFileDir.cdUp();
+        settings->setValue("last-output-dir", lastOutputFileDir.path());
+    }
+
+    return outputFilePath;
 }
 
 void CutterWidget::on_pushButtonStartConvert_clicked()
@@ -88,6 +117,9 @@ void CutterWidget::on_pushButtonStartConvert_clicked()
         QMessageBox::warning(this, "警告", "无效的FFmpeg");
         return;
     }
+
+    ffmpegDir = new QDir(ffmpegPath);
+    ffmpegDir->cdUp();
 
     QString inputFilePath = ui->lineEditInputFilePath->text().trimmed();
     if (inputFilePath.isEmpty())
@@ -122,6 +154,8 @@ void CutterWidget::on_pushButtonStartConvert_clicked()
         return;
     }
 
+    ui->pushButtonStartConvert->setEnabled(false);
+
     QString cmd = getCommand(
                 ffmpegPath,
                 inputFilePath,
@@ -148,6 +182,8 @@ void CutterWidget::on_pushButtonStartConvert_clicked()
             if (output.indexOf("Lsize") != -1)
             {
                 // 输出完成
+                this->ui->progressBar->setMinimum(0);
+                this->ui->progressBar->setMaximum(100);
                 this->ui->progressBar->setValue(100);
             }
             else
@@ -174,6 +210,8 @@ void CutterWidget::on_pushButtonStartConvert_clicked()
 
     process.waitForFinished();
     qDebug() << "ffmpeg命令执行完成";
+
+    ui->pushButtonStartConvert->setEnabled(true);
 }
 
 void CutterWidget::loadSettings()
@@ -216,6 +254,12 @@ QString CutterWidget::getCommand(
     if (fps > 0)
     {
         cmd.append("-r " + QString::number(fps) + " ");
+    }
+
+    // 输出视频
+    if (outputFilePath.endsWith(".mp4"))
+    {
+        cmd.append("-vcodec copy -acodec copy ");
     }
 
     // 覆盖文件

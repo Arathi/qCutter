@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>qCutter v0.2.1</string>
+   <string>qCutter v0.2.2</string>
   </property>
   <widget class="QPushButton" name="pushButtonOpenInputFile">
    <property name="geometry">
@@ -293,7 +293,7 @@
     <string>开始转换</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="pushButton">
+  <widget class="QPushButton" name="pushButtonPreview">
    <property name="enabled">
     <bool>false</bool>
    </property>
@@ -306,7 +306,7 @@
     </rect>
    </property>
    <property name="text">
-    <string>选择区间</string>
+    <string>预览</string>
    </property>
   </widget>
  </widget>

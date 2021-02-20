@@ -9,6 +9,8 @@
 #include <QMessageBox>
 #include <QProcess>
 #include <QSettings>
+#include <QFile>
+#include <QDir>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class CutterWidget; }
@@ -38,6 +40,7 @@ private slots:
 private:
     Ui::CutterWidget *ui;
     QSettings *settings;
+    QDir *ffmpegDir;
 
     QString getCommand(
             QString ffmpegPath,
@@ -54,5 +57,6 @@ private:
     QString executeFFmpeg(QString cmd);
     QString getFFmpegVersion(QString ffmpegPath);
     QPair<int, int> getVideoWidthAndHeight(QString ffmpegPath, QString inputFilePath);
+    QString getOutputFilePath();
 };
 #endif // CUTTERWIDGET_H
