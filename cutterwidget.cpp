@@ -104,22 +104,27 @@ QString CutterWidget::getOutputFilePath() {
 
 void CutterWidget::on_pushButtonStartConvert_clicked()
 {
-    QString ffmpegPath = ui->lineEditFFmpegPath->text().trimmed();
-    if (ffmpegPath.isEmpty())
+    // QString ffmpegPath = ui->lineEditFFmpegPath->text().trimmed();
+    // if (ffmpegPath.isEmpty())
+    // {
+    //     QMessageBox::warning(this, "警告", "未选择FFmpeg");
+    //     return;
+    // }
+    //
+    // QString ffmpegVersion = getFFmpegVersion(ffmpegPath);
+    // if (ffmpegVersion.isEmpty())
+    // {
+    //     QMessageBox::warning(this, "警告", "无效的FFmpeg");
+    //     return;
+    // }
+    //
+    // ffmpegDir = new QDir(ffmpegPath);
+    // ffmpegDir->cdUp();
+
+    if (!checkFFmpeg())
     {
-        QMessageBox::warning(this, "警告", "未选择FFmpeg");
         return;
     }
-
-    QString ffmpegVersion = getFFmpegVersion(ffmpegPath);
-    if (ffmpegVersion.isEmpty())
-    {
-        QMessageBox::warning(this, "警告", "无效的FFmpeg");
-        return;
-    }
-
-    ffmpegDir = new QDir(ffmpegPath);
-    ffmpegDir->cdUp();
 
     QString inputFilePath = ui->lineEditInputFilePath->text().trimmed();
     if (inputFilePath.isEmpty())
@@ -128,7 +133,7 @@ void CutterWidget::on_pushButtonStartConvert_clicked()
         return;
     }
 
-    QPair<int, int> resolution = getVideoWidthAndHeight(ffmpegPath, inputFilePath);
+    // QPair<int, int> resolution = getVideoWidthAndHeight(ffmpegPath, inputFilePath);
 
     QString startTimeStr = ui->lineEditStartTime->text().trimmed();
     QString endTimeStr = ui->lineEditEndTime->text().trimmed();
@@ -156,6 +161,7 @@ void CutterWidget::on_pushButtonStartConvert_clicked()
 
     ui->pushButtonStartConvert->setEnabled(false);
 
+    QString ffmpegPath = ffmpegDir->path() + "/ffmpeg" + ".exe";
     QString cmd = getCommand(
                 ffmpegPath,
                 inputFilePath,
@@ -304,7 +310,8 @@ QPair<int, int> CutterWidget::getVideoWidthAndHeight(QString ffmpegPath, QString
 QString CutterWidget::executeFFmpeg(QString cmd)
 {
     QProcess process(this);
-    qDebug().noquote() << "执行命令：" << cmd;
+    qDebug() << "执行命令：";
+    qDebug().noquote() << cmd;
     process.start(cmd);
     process.waitForStarted();
     process.waitForFinished();
@@ -318,7 +325,7 @@ void CutterWidget::on_lineEditScaleWidth_editingFinished()
 {
     int width = ui->lineEditScaleWidth->text().trimmed().toInt();
     if (width % 2 == 1) {
-        width -= 1;
+        width += 1;
         ui->lineEditScaleWidth->setText(QString::number(width));
     }
     if (width > 0 && ui->checkBox->isChecked()) {
@@ -330,10 +337,85 @@ void CutterWidget::on_lineEditScaleHeight_editingFinished()
 {
     int height = ui->lineEditScaleHeight->text().trimmed().toInt();
     if (height % 2 == 1) {
-        height -= 1;
+        height += 1;
         ui->lineEditScaleHeight->setText(QString::number(height));
     }
     if (height > 0 && ui->checkBox->isChecked()) {
         ui->lineEditScaleWidth->setText("-1");
     }
+}
+
+bool CutterWidget::checkFFmpeg() {
+    QString ffmpegPath = ui->lineEditFFmpegPath->text().trimmed();
+    if (ffmpegPath.isEmpty())
+    {
+        QMessageBox::warning(this, "警告", "未选择FFmpeg");
+        return false;
+    }
+
+    QString ffmpegVersion = getFFmpegVersion(ffmpegPath);
+    if (ffmpegVersion.isEmpty())
+    {
+        QMessageBox::warning(this, "警告", "无效的FFmpeg");
+        return false;
+    }
+
+    ffmpegDir = new QDir(ffmpegPath);
+    ffmpegDir->cdUp();
+
+    return true;
+}
+
+void CutterWidget::on_pushButtonPreview_clicked()
+{
+    if (!checkFFmpeg())
+    {
+        return;
+    }
+
+    QString inputFilePath = ui->lineEditInputFilePath->text().trimmed();
+    if (inputFilePath.isEmpty())
+    {
+        QMessageBox::warning(this, "警告", "请选择输入视频文件");
+        return;
+    }
+
+    QString startTimeStr = ui->lineEditStartTime->text().trimmed();
+    QString endTimeStr = ui->lineEditEndTime->text().trimmed();
+    FormattedTime startTime(startTimeStr);
+    FormattedTime endTime(endTimeStr);
+    int startTimeMs = startTime.toMillisecond();
+    int endTimeMs = endTime.toMillisecond();
+    int duration = endTimeMs - startTimeMs;
+    qDebug() << "选取片段时长：" << QString::number(duration) << "ms";
+
+    QString scaleWidthStr = ui->lineEditScaleWidth->text().trimmed();
+    QString scaleHeightStr = ui->lineEditScaleHeight->text().trimmed();
+    QString fpsStr = ui->lineEditFps->text().trimmed();
+
+    int scaleWidth = scaleWidthStr.toInt();
+    int scaleHeight = scaleHeightStr.toInt();
+    int fps = fpsStr.toInt();
+
+    QString ffPlayPath = ffmpegDir->path() + "/ffplay" + ".exe";
+
+    QString cmd("");
+
+    // FFplay可执行文件
+    cmd.append("\"" + ffPlayPath + "\" ");
+
+    // 开始时间
+    cmd.append("-ss " + startTimeStr + " ");
+
+    // 播放时长
+    cmd.append("-t " + QString::number(duration / 1000.0) + " ");
+
+    // 输入文件
+    cmd.append("-i \"" + inputFilePath + "\"");
+
+    qDebug() << "执行命令如下：";
+    qDebug().noquote() << cmd;
+
+    QProcess process(this);
+    process.execute(cmd);
 }

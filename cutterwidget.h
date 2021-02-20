@@ -37,6 +37,8 @@ private slots:
 
     void on_lineEditScaleHeight_editingFinished();
 
+    void on_pushButtonPreview_clicked();
+
 private:
     Ui::CutterWidget *ui;
     QSettings *settings;
@@ -54,6 +56,7 @@ private:
     );
 
     void loadSettings();
+    bool checkFFmpeg();
     QString executeFFmpeg(QString cmd);
     QString getFFmpegVersion(QString ffmpegPath);
     QPair<int, int> getVideoWidthAndHeight(QString ffmpegPath, QString inputFilePath);
